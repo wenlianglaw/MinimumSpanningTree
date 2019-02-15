@@ -35,6 +35,7 @@ class MST{
         vector<vector<int>> matrix;
     public:
         void ReadData(string filename){
+            cout<<"Reading data.."<<endl;
             ifstream in(filename, ifstream::in);
             if(!in){
                 cout<<"Cannot open file!"<<endl;
@@ -42,6 +43,7 @@ class MST{
             }
             ReadData(in);
             in.close();
+            cout<<"Reading data done!"<<endl;
         }
 
         void ReadData(istream  &stream = cin){
@@ -61,7 +63,7 @@ class MST{
         /* Using priority queue.
             O(E * log(E)) = O(E*logV)
          */
-        int MstWeightPQ(){
+        int MstWeightPQ() const {
             int rst = 0;
             priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> mst; 
 
@@ -72,46 +74,63 @@ class MST{
             key[src] = 0;
             mst.push({0,src});
             
+            // This var is for perf measurement.
+            int loop_count = 0;
+            int pqSize = 0;
+            int totalVisits = 0;
             while(!mst.empty()){
                 int to = mst.top().second;
                 mst.pop();
+                loop_count++;
+                totalVisits++;
                 if(inMst[to]) continue;
 
                 inMst[to] = true;
 
                 for(auto v : vertices[to].adj){
+                    totalVisits ++;
                     if(!inMst[v.to] && key[v.to] > v.weight){
                         key[v.to] = v.weight;
                         mst.push({v.weight, v.to});
+                        loop_count++;
+                        if(mst.size() > pqSize) pqSize = mst.size();
                     }
                 }
             }
 
+            cout<<"We have "<<loop_count<<" operations on the PQ."<<endl;
+            cout<<"The maximum size of the PQ is "<<pqSize<<endl;
+            cout<<"Total visit: "<<totalVisits<<endl;
             rst = accumulate(key.begin(),key.end(),0);
             return rst;
         }
 
         /* O(V^2) */
-        int MstWeightV2(){
+        int MstWeightV2() const {
             int rst = 0;
             vector<bool> inMst(m,false);
             vector<int> key(m,INF);
             key[vertices[0].no] = 0;
+            int totalVisits = 0;
             for(int i=0;i<m;i++){
                 int newVertice = 0;
                 int min = INF;
+                totalVisits++;
                 for(int i=0;i<m;i++){
+                    totalVisits++;
                     if(!inMst[i] && key[i] < min)
                         newVertice = i, min = key[i];
                 }
                 rst += key[newVertice];
                 inMst[newVertice] = true;
                 for(int i=0;i<m;i++){
+                    totalVisits++;
                     if(matrix[newVertice][i] != INF && !inMst[i]
                             && key[i] > matrix[newVertice][i])
                         key[i] = matrix[newVertice][i];
                 }
             }
+            cout<<"Total visits is "<<totalVisits<<endl;
             return rst;
         }
 
@@ -125,14 +144,8 @@ class MST{
             cout<<MstWeightV2()<<endl;
         }
 };
-
-void Timer(function<void(void)> func, string someComments=string()){
-    cout<<someComments<<endl;
-    chrono::high_resolution_clock::time_point t1 = high_resolution_clock::now();  
-    func();
-    high_resolution_clock::time_point t2 = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(t2-t1).count();
-    cout<<duration<<"ms"<<endl;
+void PrintProgress(float percentage){
+    cout<<"\r"<<percentage*100<<"%    ";
 }
 
 void MakeData(string filename){
@@ -154,8 +167,10 @@ void MakeData(string filename){
         selected.insert((i+1)*m+i);
     }
 
-    // The real wrote edges
+    // The real written edges
     int realN = m-1;
+    int lastIndicator = 0;
+    fputs("\e[?25l", stdout);
     for(int i=0;i<n+1-m;i++){
         int from=0,to=0;
         while(from==to) from = rand()%m,to=rand()%m;
@@ -165,7 +180,17 @@ void MakeData(string filename){
         realN ++;
         selected.insert(to*m+from);
         selected.insert(from*m+to);
+        
+        // progress indicator
+        if( i > lastIndicator + 100){
+            lastIndicator = i;
+            PrintProgress( i * 1.0f / (n+1-m) );
+        }
+        
     }
+    PrintProgress(1.00f);
+    fputs("\e[?25h", stdout);
+
     out.seekg(0,ios::beg);
     int a,b;
     out>>a>>b;
@@ -177,6 +202,16 @@ void MakeData(string filename){
 
 void ShowHelp(){
     cout<<"mst {Vertics Count:int} {Regen Data:1/0}"<<endl;
+    cout<<endl;
+}
+
+void Timer(function<void(void)> &&func, string someComments=string()){
+    if(!someComments.empty())cout<<someComments<<endl;
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
+    func();
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(t2-t1).count();
+    cout<<duration<<"ms"<<endl;
     cout<<endl;
 }
 
@@ -199,8 +234,8 @@ int main(int argc, char **args){
     MST mst;
     mst.ReadData(dataFile);
     
-    Timer(bind(&MST::RunPQ, mst));
-    Timer(bind(&MST::RunV2, mst));
-    
+    Timer(bind(&MST::RunPQ, &mst),"Running PQ");
+    Timer(bind(&MST::RunV2, &mst),"Running V^2");
+   
     return 0;
 }
