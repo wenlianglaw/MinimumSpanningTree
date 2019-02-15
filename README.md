@@ -7,7 +7,7 @@ Benchmark on 2.2 GHz Intel Core i7, 32 GB 2400 MHz DDR4
 
 | .     | Vertexs Count | Edges Count | Execution Time |
 |-------|---------------|-------------|----------------|
-**|O(V logE)|20000|1989849(0.5%)|439ms|**
+|**O(V logE)**|20000|1989849(0.5%)|**439ms**|
 |O(V^2)|||1079ms|
 |||||
 |**O(V logE)|10000**|497391(0.5%)|**92ms**|
